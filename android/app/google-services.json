@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "84316152161",
+    "project_id": "tbfatama-269b3",
+    "storage_bucket": "tbfatama-269b3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:84316152161:android:d1f579e6f8de126ca5e520",
+        "android_client_info": {
+          "package_name": "com.omarmustafazada.tbfatama"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACelSsRU2z61zi367aCjIna1EW0b9A2mE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
