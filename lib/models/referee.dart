@@ -1,9 +1,9 @@
-enum RefereeRole { kosu, masa, aday, admin } // Admin rolü eklendi
+enum RefereeRole { kosu, masa, admin }
 
 class Referee {
   final String id;
-  final String name;
-  final String email; // E-posta alanı eklendi
+  String name; // 'final' kaldırıldı, artık güncellenebilir
+  final String email;
   RefereeRole role;
   int level;
   final List<String> conflictCoachIds;
@@ -37,8 +37,8 @@ class Referee {
       id: map['id'] ?? '',
       name: map['name'] ?? '',
       email: map['email'] ?? '',
-      role: RefereeRole.values.firstWhere((e) => e.name == map['role'], orElse: () => RefereeRole.aday),
-      level: map['level'] ?? 0,
+      role: RefereeRole.values.firstWhere((e) => e.name == map['role'], orElse: () => RefereeRole.kosu),
+      level: map['level'] ?? 2,
       isApproved: map['isApproved'] ?? false,
     );
   }

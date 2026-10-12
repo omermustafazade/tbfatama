@@ -6,19 +6,27 @@ class Match {
   final String time;
   final String teamA;
   final String teamB;
-  final String category; // EKLENEN KATEGORİ ALANI
-  final String location; // YENİ EKLENEN KONUM/SALON ALANI
+  final String teamAId; // YENİ
+  final String teamBId; // YENİ
+  final int teamAPoint;
+  final int teamBPoint;
+  final String category;
+  final String location;
   final String coachAId;
   final String coachBId;
-  final int difficultyLevel;
-
   String? headRefereeId;
   String? assistantRefereeId;
   String? scorekeeperId;
   String? timekeeperId;
   String? shotClockOperatorId;
-
   MatchStatus status;
+
+  // YENİ SKOR ALANLARI
+  int? teamAScore;
+  int? teamBScore;
+  bool isScoreEntered;
+
+  int get matchPoint => teamAPoint + teamBPoint;
 
   Match({
     required this.id,
@@ -26,20 +34,25 @@ class Match {
     required this.time,
     required this.teamA,
     required this.teamB,
+    required this.teamAId,
+    required this.teamBId,
+    required this.teamAPoint,
+    required this.teamBPoint,
     required this.category,
-    required this.location, // YENİ EKLENEN KONUM/SALON ALANI
+    required this.location,
     required this.coachAId,
     required this.coachBId,
-    required this.difficultyLevel,
     this.headRefereeId,
     this.assistantRefereeId,
     this.scorekeeperId,
     this.timekeeperId,
     this.shotClockOperatorId,
     this.status = MatchStatus.pending,
+    this.teamAScore,
+    this.teamBScore,
+    this.isScoreEntered = false,
   });
 
-  // FIREBASE'E YAZMAK İÇİN
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -47,21 +60,26 @@ class Match {
       'time': time,
       'teamA': teamA,
       'teamB': teamB,
+      'teamAId': teamAId,
+      'teamBId': teamBId,
+      'teamAPoint': teamAPoint,
+      'teamBPoint': teamBPoint,
       'category': category,
-      'location': location, // Firebase'e yazıyoruz
+      'location': location,
       'coachAId': coachAId,
       'coachBId': coachBId,
-      'difficultyLevel': difficultyLevel,
       'headRefereeId': headRefereeId,
       'assistantRefereeId': assistantRefereeId,
       'scorekeeperId': scorekeeperId,
       'timekeeperId': timekeeperId,
       'shotClockOperatorId': shotClockOperatorId,
       'status': status.name,
+      'teamAScore': teamAScore,
+      'teamBScore': teamBScore,
+      'isScoreEntered': isScoreEntered,
     };
   }
 
-  // FIREBASE'DEN OKUMAK İÇİN
   factory Match.fromMap(Map<String, dynamic> map, String docId) {
     return Match(
       id: docId,
@@ -69,20 +87,23 @@ class Match {
       time: map['time'] ?? '',
       teamA: map['teamA'] ?? '',
       teamB: map['teamB'] ?? '',
+      teamAId: map['teamAId'] ?? '',
+      teamBId: map['teamBId'] ?? '',
+      teamAPoint: map['teamAPoint'] ?? 1,
+      teamBPoint: map['teamBPoint'] ?? 1,
       category: map['category'] ?? 'Belirtilmedi',
-      location: map['location'] ?? 'Bilinmeyen Salon', // Firebase'den okuyoruz
+      location: map['location'] ?? 'Bilinmeyen Salon',
       coachAId: map['coachAId'] ?? '',
       coachBId: map['coachBId'] ?? '',
-      difficultyLevel: map['difficultyLevel'] ?? 1,
       headRefereeId: map['headRefereeId'],
       assistantRefereeId: map['assistantRefereeId'],
       scorekeeperId: map['scorekeeperId'],
       timekeeperId: map['timekeeperId'],
       shotClockOperatorId: map['shotClockOperatorId'],
-      status: MatchStatus.values.firstWhere(
-            (e) => e.name == map['status'],
-        orElse: () => MatchStatus.pending,
-      ),
+      status: MatchStatus.values.firstWhere((e) => e.name == map['status'], orElse: () => MatchStatus.pending),
+      teamAScore: map['teamAScore'],
+      teamBScore: map['teamBScore'],
+      isScoreEntered: map['isScoreEntered'] ?? false,
     );
   }
 }

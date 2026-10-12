@@ -7,20 +7,19 @@ class MockData {
   static const String coachMehmet = "c2";
 
   static List<Referee> referees = [
-    // Mevcut Test Hakemi (Şifre simülasyonu için maili kullanacağız)
     Referee(
         id: "r1",
         name: "Ozan İnce",
         email: "ozan@mail.com",
         role: RefereeRole.kosu,
-        level: 8
+        level: 4 // Puan (2, 3, 4, 5)
     ),
     Referee(
         id: "r98",
         name: "Onaysız Hakem",
         email: "yeni@mail.com",
-        role: RefereeRole.aday,
-        level: 0,
+        role: RefereeRole.kosu,
+        level: 2,
         isApproved: false
     ),
   ];
@@ -32,11 +31,12 @@ class MockData {
         time: "14:00",
         teamA: "Gelişim",
         teamB: "Bahçeşehir",
+        teamAPoint: 4,
+        teamBPoint: 3,
         category: "U18",
-        location: "Pau Arena",
+        location: "PAU Arena",
         coachAId: coachAhmet,
-        coachBId: coachMehmet,
-        difficultyLevel: 8
+        coachBId: coachMehmet
     ),
   ];
 
