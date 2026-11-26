@@ -2,6 +2,20 @@ import '../models/match.dart';
 import '../models/referee.dart';
 import '../models/availability.dart';
 
+class RefereeEvaluation {
+  final Referee referee;
+  final bool isEligible;
+  final int totalScore;
+  final List<String> reasons;
+
+  RefereeEvaluation({
+    required this.referee,
+    required this.isEligible,
+    required this.totalScore,
+    required this.reasons,
+  });
+}
+
 class AssignmentService {
   int _timeToMinutes(String time) {
     final parts = time.split(':');
@@ -17,8 +31,10 @@ class AssignmentService {
         if (m.id == currentMatch.id) continue;
         if (m.headRefereeId != refId && m.assistantRefereeId != refId) continue;
 
-        if (m.teamA == currentMatch.teamA || m.teamB == currentMatch.teamA ||
-            m.teamA == currentMatch.teamB || m.teamB == currentMatch.teamB) {
+        if (m.teamA == currentMatch.teamA ||
+            m.teamB == currentMatch.teamA ||
+            m.teamA == currentMatch.teamB ||
+            m.teamB == currentMatch.teamB) {
           DateTime pastDate = DateTime.parse(m.date);
           int diffDays = currentDate.difference(pastDate).inDays.abs();
           if (diffDays <= 7) {
@@ -27,24 +43,150 @@ class AssignmentService {
         }
       }
     } catch (e) {
-      return false; // Tarih parse hatası olursa ihlal yok say
+      return false;
     }
     return false;
   }
 
-  void assignRefereesToMatch(Match match, List<Referee> allReferees, List<Availability> availabilities, List<Match> allMatches) {
+  // SUNUM İÇİN YENİ: Algoritmanın her hakemi nasıl değerlendirdiğini adım adım raporlar
+  List<RefereeEvaluation> evaluateRefereesForMatch(
+      Match match,
+      List<Referee> allReferees,
+      List<Availability> availabilities,
+      List<Match> allMatches,
+      ) {
+    int currentMatchMins = _timeToMinutes(match.time);
+    int getLoad(String id) => allMatches
+        .where((m) => [
+      m.headRefereeId,
+      m.assistantRefereeId,
+      m.scorekeeperId,
+      m.timekeeperId,
+      m.shotClockOperatorId
+    ].contains(id))
+        .length;
+
+    List<RefereeEvaluation> evaluations = [];
+
+    for (var ref in allReferees) {
+      if (!ref.isApproved || ref.role == RefereeRole.admin) continue;
+
+      List<String> reasons = [];
+      bool isAvailable = availabilities.any(
+            (a) => a.refereeId == ref.id && a.date == match.date && a.availableTimes.contains(match.time),
+      );
+      if (!isAvailable) {
+        reasons.add("❌ Bu tarih/saat için uygunluk bildirmedi");
+      }
+
+      bool hasTimeConflict = allMatches.any((m) =>
+      m.id != match.id &&
+          m.date == match.date &&
+          m.time == match.time &&
+          [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(ref.id));
+      if (hasTimeConflict) {
+        reasons.add("❌ Aynı saatte başka bir maçta görevli");
+      }
+
+      bool noCoachConflict = !ref.conflictCoachIds.contains(match.coachAId) && !ref.conflictCoachIds.contains(match.coachBId);
+      if (!noCoachConflict) {
+        reasons.add("❌ Antrenör çakışması (Conflict)");
+      }
+
+      bool hasLocationConflict = false;
+      var sameDayMatches = allMatches
+          .where((m) =>
+      m.date == match.date &&
+          m.id != match.id &&
+          [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(ref.id))
+          .toList();
+
+      for (var m in sameDayMatches) {
+        int otherMatchMins = _timeToMinutes(m.time);
+        int diff = (currentMatchMins - otherMatchMins).abs();
+        if (diff < 150 && m.location != match.location) {
+          hasLocationConflict = true;
+          reasons.add("❌ Farklı salonda (${m.location}) yakın saatli (${m.time}) maçı var (<150 dk)");
+          break;
+        }
+      }
+
+      bool eligible = isAvailable && !hasTimeConflict && noCoachConflict && !hasLocationConflict;
+
+      int score = 0;
+      if (eligible) {
+        score = 1000;
+        reasons.add("⚡ Baz Puan: +1000");
+
+        int load = getLoad(ref.id);
+        if (load > 0) {
+          score -= load * 100;
+          reasons.add("⚖️ Yük Dengelemesi ($load Maç): -${load * 100}");
+        } else {
+          reasons.add("⚖️ Yük Dengelemesi (0 Maç): Ceza Yok");
+        }
+
+        int levelBonus = ref.level * 10;
+        score += levelBonus;
+        reasons.add("⭐ Derece Katkısı (G${ref.level}): +$levelBonus");
+
+        if (sameDayMatches.any((m) => m.location == match.location)) {
+          score += 300;
+          reasons.add("🏟️ Salon Optimizasyonu (Aynı Salon): +300");
+        }
+
+        if (has7DayConflict(ref.id, match, allMatches)) {
+          score -= 500;
+          reasons.add("⚠️ 7 Gün Kuralı İhlali (Aynı Takım): -500");
+        }
+      }
+
+      evaluations.add(
+        RefereeEvaluation(
+          referee: ref,
+          isEligible: eligible,
+          totalScore: score,
+          reasons: reasons,
+        ),
+      );
+    }
+
+    evaluations.sort((a, b) {
+      if (a.isEligible != b.isEligible) return a.isEligible ? -1 : 1;
+      return b.totalScore.compareTo(a.totalScore);
+    });
+
+    return evaluations;
+  }
+
+  void assignRefereesToMatch(
+      Match match,
+      List<Referee> allReferees,
+      List<Availability> availabilities,
+      List<Match> allMatches,
+      ) {
     int currentMatchMins = _timeToMinutes(match.time);
 
     // 1. UYGUNLUK VE KONUM FİLTRESİ
     List<Referee> available = allReferees.where((ref) {
-      bool isAvailable = availabilities.any((a) => a.refereeId == ref.id && a.date == match.date && a.availableTimes.contains(match.time));
-      bool hasTimeConflict = allMatches.any((m) => m.id != match.id && m.date == match.date && m.time == match.time &&
+      bool isAvailable = availabilities.any(
+            (a) => a.refereeId == ref.id && a.date == match.date && a.availableTimes.contains(match.time),
+      );
+      bool hasTimeConflict = allMatches.any((m) =>
+      m.id != match.id &&
+          m.date == match.date &&
+          m.time == match.time &&
           [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(ref.id));
       bool noCoachConflict = !ref.conflictCoachIds.contains(match.coachAId) && !ref.conflictCoachIds.contains(match.coachBId);
 
       bool hasLocationConflict = false;
-      var sameDayMatches = allMatches.where((m) => m.date == match.date && m.id != match.id &&
-          [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(ref.id)).toList();
+      var sameDayMatches = allMatches
+          .where((m) =>
+      m.date == match.date &&
+          m.id != match.id &&
+          [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(ref.id))
+          .toList();
+
       for (var m in sameDayMatches) {
         int otherMatchMins = _timeToMinutes(m.time);
         int diff = (currentMatchMins - otherMatchMins).abs();
@@ -53,13 +195,28 @@ class AssignmentService {
           break;
         }
       }
+
       return isAvailable && !hasTimeConflict && noCoachConflict && !hasLocationConflict && ref.isApproved;
     }).toList();
 
-    List<String?> assignedIds = [match.headRefereeId, match.assistantRefereeId, match.scorekeeperId, match.timekeeperId, match.shotClockOperatorId];
+    List<String?> assignedIds = [
+      match.headRefereeId,
+      match.assistantRefereeId,
+      match.scorekeeperId,
+      match.timekeeperId,
+      match.shotClockOperatorId
+    ];
     available.removeWhere((ref) => assignedIds.contains(ref.id));
 
-    int getLoad(String id) => allMatches.where((m) => [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(id)).length;
+    int getLoad(String id) => allMatches
+        .where((m) => [
+      m.headRefereeId,
+      m.assistantRefereeId,
+      m.scorekeeperId,
+      m.timekeeperId,
+      m.shotClockOperatorId
+    ].contains(id))
+        .length;
 
     // 2. YENİ PUANLAMA SİSTEMİ VE 7 GÜN KURALI
     int calculateScore(Referee ref) {
@@ -68,8 +225,12 @@ class AssignmentService {
       score += ref.level * 10; // Kategori puanı (5,4,3,2)
 
       // Salon Optimizasyonu
-      var sameDayMatches = allMatches.where((m) => m.date == match.date && m.id != match.id &&
-          [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(ref.id)).toList();
+      var sameDayMatches = allMatches
+          .where((m) =>
+      m.date == match.date &&
+          m.id != match.id &&
+          [m.headRefereeId, m.assistantRefereeId, m.scorekeeperId, m.timekeeperId, m.shotClockOperatorId].contains(ref.id))
+          .toList();
       if (sameDayMatches.any((m) => m.location == match.location)) {
         score += 300;
       }
@@ -89,7 +250,6 @@ class AssignmentService {
 
     // 3. SAHA HAKEMLERİ (BAŞ VE YARDIMCI) BARAJ KONTROLÜ
     if (match.headRefereeId == null && match.assistantRefereeId == null) {
-      // Barajı (Maç Puanı) sağlayan en iyi ikiliyi bulmaya çalış
       Referee? selectedHead;
       Referee? selectedAssistant;
 
@@ -104,7 +264,6 @@ class AssignmentService {
         if (selectedHead != null) break;
       }
 
-      // Eğer barajı sağlayan ikili yoksa, havuzdaki en iyi 2 kişiyi al (Yönetici manuel müdahale edebilir)
       if (selectedHead == null && runningPool.length >= 2) {
         selectedHead = runningPool[0];
         selectedAssistant = runningPool[1];
@@ -115,7 +274,6 @@ class AssignmentService {
         match.assistantRefereeId = selectedAssistant.id;
         runningPool.removeWhere((r) => r.id == match.headRefereeId || r.id == match.assistantRefereeId);
       } else if (runningPool.isNotEmpty) {
-        // Sadece 1 hakem kalmışsa
         match.headRefereeId = runningPool.first.id;
         runningPool.removeAt(0);
       }
@@ -141,7 +299,11 @@ class AssignmentService {
       tablePool.removeAt(0);
     }
 
-    if (match.headRefereeId != null && match.assistantRefereeId != null && match.scorekeeperId != null && match.timekeeperId != null && match.shotClockOperatorId != null) {
+    if (match.headRefereeId != null &&
+        match.assistantRefereeId != null &&
+        match.scorekeeperId != null &&
+        match.timekeeperId != null &&
+        match.shotClockOperatorId != null) {
       match.status = MatchStatus.waitingForApproval;
     }
   }

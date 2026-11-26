@@ -13,7 +13,7 @@ class TeamManagementScreen extends StatefulWidget {
 class _TeamManagementScreenState extends State<TeamManagementScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   String _teamSearchQuery = "";
-  String _selectedCategoryFilter = "TÜMÜ";
+  String _selectedCategoryFilter = "Tümü";
   String _currentSort = "A-Z";
   bool _isTableView = false;
 
@@ -51,7 +51,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
     final nameController = TextEditingController();
     final categoryController = TextEditingController();
     int powerPoint = 2;
-
     final List<String> quickCategories = ["U10", "U12", "U14", "U16", "U18", "Büyükler", "Masterlar"];
 
     showModalBottomSheet(
@@ -74,7 +73,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                       children: [
                         Center(child: Container(width: 50, height: 6, decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(10)))),
                         const SizedBox(height: 20),
-
                         Row(
                           children: [
                             Container(width: 48, height: 48, decoration: BoxDecoration(color: Colors.black, border: Border.all(color: Colors.black, width: 2), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.shield, color: Colors.white, size: 26)),
@@ -90,9 +88,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                             ),
                           ],
                         ),
-
                         const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(color: Colors.black12, thickness: 2, height: 1)),
-
                         const Text("TAKIM ADI", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1, color: Colors.black54)),
                         const SizedBox(height: 8),
                         TextField(
@@ -100,9 +96,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
                             decoration: InputDecoration(filled: true, fillColor: Colors.grey.shade50, contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14), enabledBorder: OutlineInputBorder(borderSide: const BorderSide(color: Colors.black, width: 2), borderRadius: BorderRadius.circular(10)), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.orange.shade800, width: 2), borderRadius: BorderRadius.circular(10)))
                         ),
-
                         const SizedBox(height: 20),
-
                         const Text("KATEGORİ (LİG)", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 1, color: Colors.black54)),
                         const SizedBox(height: 8),
                         TextField(
@@ -123,9 +117,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                             ),
                           )).toList(),
                         ),
-
                         const SizedBox(height: 24),
-
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(color: const Color(0xFFF4F6F8), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black12, width: 2)),
@@ -137,16 +129,13 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                             ],
                           ),
                         ),
-
                         const SizedBox(height: 24),
-
                         InkWell(
                           onTap: () async {
                             if(nameController.text.trim().isEmpty || categoryController.text.trim().isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Takım adı ve kategori boş bırakılamaz!"), backgroundColor: Colors.red));
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Takım adı ve kategori boş olamaz!"), backgroundColor: Colors.red));
                               return;
                             }
-
                             final newTeam = Team(
                                 id: "t_${DateTime.now().millisecondsSinceEpoch}",
                                 name: nameController.text.trim(),
@@ -179,14 +168,14 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
         stream: _firestoreService.getTeamsStream(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.orange)));
-
           final teams = snapshot.data!;
 
-          List<String> availableCategories = ["TÜMÜ"];
+          List<String> availableCategories = ["Tümü"];
           availableCategories.addAll(teams.map((t) => t.category).toSet().toList()..sort());
 
           var filteredTeams = teams.where((t) => t.name.toLowerCase().contains(_teamSearchQuery.toLowerCase())).toList();
-          if (_selectedCategoryFilter != "TÜMÜ") {
+
+          if (_selectedCategoryFilter != "Tümü") {
             filteredTeams = filteredTeams.where((t) => t.category == _selectedCategoryFilter).toList();
           }
 
@@ -263,7 +252,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-
                           SizedBox(
                             height: 40,
                             child: ListView.builder(
@@ -285,9 +273,7 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                               },
                             ),
                           ),
-
                           const SizedBox(height: 12),
-
                           Row(
                             children: [
                               Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), decoration: BoxDecoration(color: Colors.orange.shade100, border: Border.all(color: Colors.black, width: 1.5), borderRadius: BorderRadius.circular(6)), child: const Icon(Icons.sort, size: 16, color: Colors.black)),
@@ -316,7 +302,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                         ],
                       ),
                     ),
-
                     Expanded(
                       child: filteredTeams.isEmpty
                           ? Center(
@@ -371,7 +356,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
               itemBuilder: (context, index) {
                 final team = teams[index];
                 int winRate = team.matchesPlayed > 0 ? ((team.wins / team.matchesPlayed) * 100).toInt() : 0;
-
                 return InkWell(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => TeamDetailScreen(team: team))),
                   child: Container(
@@ -404,7 +388,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
       itemBuilder: (context, index) {
         final team = teams[index];
         int winRate = team.matchesPlayed > 0 ? ((team.wins / team.matchesPlayed) * 100).toInt() : 0;
-
         return Padding(
           padding: const EdgeInsets.only(bottom: 20.0),
           child: GestureDetector(
@@ -434,11 +417,13 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                             children: [
                               Text(team.name.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.5), maxLines: 1, overflow: TextOverflow.ellipsis),
                               const SizedBox(height: 8),
-                              Row(
+                              // YENİ: TAŞMA HATASINI ÖNLEMEK İÇİN ROW YERİNE WRAP KULLANILDI
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
                                 children: [
                                   Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(6)), child: Text(team.category.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1))),
-                                  const SizedBox(width: 8),
-                                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.grey.shade100, border: Border.all(color: Colors.black, width: 1.5), borderRadius: BorderRadius.circular(6)), child: Row(children: [const Icon(Icons.flash_on, size: 12, color: Colors.orange), const SizedBox(width: 4), Text("KATEGORİ: ${team.powerPoint}", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.black))])),
+                                  Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.grey.shade100, border: Border.all(color: Colors.black, width: 1.5), borderRadius: BorderRadius.circular(6)), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.flash_on, size: 12, color: Colors.orange), const SizedBox(width: 4), Text("KATEGORİ: ${team.powerPoint}", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.black))])),
                                 ],
                               ),
                             ],
@@ -448,7 +433,6 @@ class _TeamManagementScreenState extends State<TeamManagementScreen> {
                       ],
                     ),
                   ),
-
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     decoration: const BoxDecoration(color: Color(0xFFF9FAFB), borderRadius: BorderRadius.vertical(bottom: Radius.circular(13)), border: Border(top: BorderSide(color: Colors.black, width: 2))),
